@@ -34,3 +34,97 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+
+pemuda-hikma/
+├── app/
+│   ├── (public)/
+│   │   ├── layout.js
+│   │   ├── page.js
+│   │   ├── articles/
+│   │   │   ├── page.js
+│   │   │   └── [slug]/
+│   │   │       └── page.js
+│   │   └── events/
+│   │       ├── page.js
+│   │       ├── [slug]/
+│   │       │   └── page.js
+│   │       └── [slug]/
+│   │           └── payment.js
+│   │
+│   ├── (admin)/
+│   │   ├── layout.js
+│   │   ├── dashboard/
+│   │   │   └── page.js
+│   │   ├── articles/
+│   │   │   ├── page.js
+│   │   │   ├── new/
+│   │   │   │   └── page.js
+│   │   │   └── [slug]/
+│   │   │       ├── details
+│   │   │       │   └── page.js
+│   │   │       └── edit
+│   │   │           └── page.js
+│   │   └── events/
+│   │       ├── page.js
+│   │       ├── new/
+│   │       │   └── page.js
+│   │       └── [slug]/
+│   │   │       ├── details
+│   │   │       │   └── page.js
+│   │   │       └── edit
+│   │   │           └── page.js
+│   │
+│   ├── api/
+│   │   ├── auth/
+│   │   │   └── [...nextauth]/
+│   │   │       └── route.js
+│   │   ├── articles/
+│   │   │   └── route.js
+│   │   ├── upload-image/
+│   │   │   └── route.js
+│   │   ├── events/
+│   │   │   └── route.js
+│   │   └── payments/
+│   │       ├── route.js
+│   │       └── webhook/
+│   │           └── route.js
+│   │
+│   ├── login/
+│   │   └── page.js
+│   │
+│   └── layout.js
+│
+├── components/
+│   ├── Navbar.js
+│   ├── AdminNavbar.js
+│   ├── Footer.js
+│   ├── ArticleCard.js
+│   ├── EventCard.js
+│   └── LoadingSpinner.js
+│
+├── lib/
+│   ├── auth.js
+│   ├── db.js
+│   └── midtrans.js
+│
+├── prisma/
+│   └── schema.prisma
+│
+├── public/
+│   ├── images/
+│   │   ├── logo-hikma.png
+│   │   └── logo-hikma-white.png
+│   └── assets/
+│       ├── default-article.jpg
+│       └── default-event.jpg
+│
+├── styles/
+│   └── globals.css
+│
+├── .env.local
+├── .gitignore
+├── next.config.js
+├── tailwind.config.js
+├── postcss.config.js
+└── package.json
