@@ -1,0 +1,59 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("USER")
+  articles      Article[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String
+  image       String?
+  published   Boolean  @default(false)
+  author      User     @relation(fields: [authorId], references: [id])
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String
+  image       String?
+  date        DateTime
+  location    String
+  price       Float
+  tickets     Ticket[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Ticket {
+  id          String   @id @default(uuid())
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  buyerName   String
+  buyerEmail  String
+  buyerPhone  String
+  status      String   @default("PENDING")
+  midtransId  String?
+  createdAt   DateTime @default(now())
+}
