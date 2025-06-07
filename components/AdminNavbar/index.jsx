@@ -17,7 +17,7 @@ export default function AdminNavbar() {
   return (
     <aside className="w-64 bg-blue-900 text-white shadow-lg flex flex-col min-h-screen">
       <div className="p-4 border-b border-blue-800">
-        <Link href="/dashboard" className="text-xl font-bold block hover:text-purple-700">
+        <Link href="/dashboard" className="text-xl font-bold block hover:text-primary">
           Dashboard
         </Link>
       </div>

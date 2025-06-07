@@ -1,175 +1,275 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { uploadImage } from '@/lib/cloudinary'
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
+import dynamic from 'next/dynamic';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+import 'react-quill/dist/quill.snow.css';
 
 export default function NewEventPage() {
-  const [title, setTitle] = useState('')
-  const [slug, setSlug] = useState('')
-  const [description, setDescription] = useState('')
-  const [image, setImage] = useState(null)
-  const [date, setDate] = useState('')
-  const [location, setLocation] = useState('')
-  const [price, setPrice] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const router = useRouter()
+  const [formData, setFormData] = useState({
+    title: '',
+    slug: '',
+    description: '',
+    image: null,
+    date: '',
+    location: '',
+    price: '',
+  });
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [manualSlugEdit, setManualSlugEdit] = useState(false);
+
+  const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (!manualSlugEdit) {
+      const slug = formData.title
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^a-z0-9\-]/g, '');
+      setFormData(prev => ({ ...prev, slug }));
+    }
+  }, [formData.title, manualSlugEdit]);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!session) {
+      router.push('/auth/signin');
+    }
+  }, [session, status, router]);
+
+  const handleChange = (e) => {
+    const { name, value, type, files } = e.target;
+
+    if (name === 'slug') {
+      setManualSlugEdit(true);
+      setFormData(prev => ({ ...prev, slug: value }));
+      return;
+    }
+
+    if (name === 'image') {
+      setFormData(prev => ({ ...prev, image: files[0] || null }));
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'number' ? Number(value) : value,
+    }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
 
     try {
-      let imageUrl = ''
-      if (image) {
-        imageUrl = await uploadImage(image)
+      let imageUrl = '';
+
+      if (formData.image) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', formData.image);
+
+        const uploadRes = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!uploadRes.ok) {
+          const errorData = await uploadRes.json();
+          throw new Error(errorData.error || 'Gagal upload gambar');
+        }
+
+        const uploadData = await uploadRes.json();
+        imageUrl = uploadData.url;
       }
+
+      if (!formData.title || !formData.slug || !formData.description || !formData.date || !formData.location || formData.price === '') {
+        throw new Error('Harap lengkapi semua field');
+      }
+
+      const eventData = {
+        title: formData.title,
+        slug: formData.slug,
+        description: formData.description,
+        image: imageUrl || null,
+        date: formData.date,
+        location: formData.location,
+        price: Number(formData.price),
+      };
 
       const response = await fetch('/api/events', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title,
-          slug,
-          description,
-          image: imageUrl,
-          date: new Date(date).toISOString(),
-          location,
-          price: parseFloat(price)
-        })
-      })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData),
+      });
 
-      if (response.ok) {
-        router.push('/admin/events')
-      } else {
-        const data = await response.json()
-        setError(data.message || 'Failed to create event')
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Gagal membuat event');
       }
+
+      router.push('/events-admin');
+      router.refresh();
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      console.error('Error:', err);
+      setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.');
     } finally {
-      setLoading(false)
+      setIsSubmitting(false);
     }
+  };
+
+  const handleDescriptionChange = (value) => {
+    setFormData(prev => ({ ...prev, description: value }));
+  };
+
+  if (status === 'loading' || !session) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p>Memuat...</p>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Create New Event</h1>
-      
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Buat Event Baru</h1>
+
       {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+        <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-md">
           {error}
         </div>
       )}
-      
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="title">
-            Title
-          </label>
-          <input
-            id="title"
-            type="text"
-            className="w-full px-3 py-2 border rounded-md"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-          />
+
+      <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+        <div className="grid gap-6 mb-6">
+
+          <div>
+            <label htmlFor="title" className="block mb-2 font-medium">Judul Event</label>
+            <input
+              id="title"
+              name="title"
+              type="text"
+              className="w-full p-3 border rounded-lg"
+              value={formData.title}
+              onChange={handleChange}
+              required
+              disabled={isSubmitting}
+              placeholder="Masukkan judul event"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="slug" className="block mb-2 font-medium">URL Slug</label>
+            <input
+              id="slug"
+              name="slug"
+              type="text"
+              className="w-full p-3 border rounded-lg"
+              value={formData.slug}
+              onChange={handleChange}
+              required
+              disabled={isSubmitting}
+              placeholder="url-slug-event"
+            />
+            <p className="text-sm text-gray-500 mt-1">Alamat unik untuk event ini (otomatis terisi dari judul)</p>
+          </div>
+
+          <div>
+            <label className="block mb-2 font-medium">Deskripsi Event</label>
+            <ReactQuill
+              theme="snow"
+              value={formData.description}
+              onChange={handleDescriptionChange}
+              className="bg-white"
+              readOnly={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="image" className="block mb-2 font-medium">Gambar Utama</label>
+            <input
+              id="image"
+              name="image"
+              type="file"
+              accept="image/*"
+              onChange={handleChange}
+              disabled={isSubmitting}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+            />
+            <p className="text-sm text-gray-500 mt-1">Ukuran maksimal 2MB. Format: JPG, PNG, atau WEBP</p>
+          </div>
+
+          <div>
+            <label htmlFor="date" className="block mb-2 font-medium">Tanggal Event</label>
+            <input
+              id="date"
+              name="date"
+              type="date"
+              className="w-full p-3 border rounded-lg"
+              value={formData.date}
+              onChange={handleChange}
+              required
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="location" className="block mb-2 font-medium">Lokasi</label>
+            <input
+              id="location"
+              name="location"
+              type="text"
+              className="w-full p-3 border rounded-lg"
+              value={formData.location}
+              onChange={handleChange}
+              required
+              disabled={isSubmitting}
+              placeholder="Contoh: Jakarta Convention Center"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="price" className="block mb-2 font-medium">Harga (Rp)</label>
+            <input
+              id="price"
+              name="price"
+              type="number"
+              min="0"
+              step="1000"
+              className="w-full p-3 border rounded-lg"
+              value={formData.price}
+              onChange={handleChange}
+              required
+              disabled={isSubmitting}
+              placeholder="Contoh: 150000"
+            />
+          </div>
         </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="slug">
-            Slug (URL-friendly)
-          </label>
-          <input
-            id="slug"
-            type="text"
-            className="w-full px-3 py-2 border rounded-md"
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-            required
-          />
+
+        <div className="flex gap-4">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? 'Menyimpan...' : 'Simpan Event'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => router.push('/events-admin')}
+            disabled={isSubmitting}
+            className="px-6 py-3 bg-gray-300 rounded-lg hover:bg-gray-400"
+          >
+            Batal
+          </button>
         </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="description">
-            Description
-          </label>
-          <textarea
-            id="description"
-            className="w-full px-3 py-2 border rounded-md min-h-[200px]"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            required
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="image">
-            Featured Image
-          </label>
-          <input
-            id="image"
-            type="file"
-            accept="image/*"
-            className="w-full px-3 py-2 border rounded-md"
-            onChange={(e) => setImage(e.target.files[0])}
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="date">
-            Date
-          </label>
-          <input
-            id="date"
-            type="datetime-local"
-            className="w-full px-3 py-2 border rounded-md"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-        </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 mb-2" htmlFor="location">
-            Location
-          </label>
-          <input
-            id="location"
-            type="text"
-            className="w-full px-3 py-2 border rounded-md"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            required
-          />
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-gray-700 mb-2" htmlFor="price">
-            Price (IDR)
-          </label>
-          <input
-            id="price"
-            type="number"
-            className="w-full px-3 py-2 border rounded-md"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            required
-          />
-        </div>
-        
-        <button
-          type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
-          disabled={loading}
-        >
-          {loading ? 'Creating...' : 'Create Event'}
-        </button>
       </form>
     </div>
-  )
+  );
 }

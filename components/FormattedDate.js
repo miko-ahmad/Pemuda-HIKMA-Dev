@@ -1,13 +1,14 @@
-// Buat komponen format tanggal yang konsisten
 'use client';
 
 export function FormattedDate({ date }) {
-  // Format tanggal di client sesuai locale browser
-  const formattedDate = new Date(date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric'
+  const dt = new Date(date);
+
+  const formatted = dt.toLocaleDateString('id-ID', {
+    weekday: 'long',   // Jumat
+    day: 'numeric',    // 7
+    month: 'long',     // Juni
+    year: 'numeric'    // 2025
   });
 
-  return <span>{formattedDate}</span>;
+  return (<span>{formatted}</span>);
 }
